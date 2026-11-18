@@ -1875,6 +1875,311 @@ h1{text-align:center;margin-bottom:28px}
 </div></div>
 
 
+<script>
+(function () {
+  // Đọc dữ liệu sách và link từ nội dung HTML cũ
+  const books = [];
+  let testament = "OT";
+  let current = null;
+
+  document.querySelectorAll(
+    "h1, h2, h3, a.playlist, .chapter a"
+  ).forEach(node => {
+    if (node.matches("h1")) {
+      if (node.textContent.includes("TÂN ƯỚC")) {
+        testament = "NT";
+      }
+      return;
+    }
+
+    if (node.matches("h2, h3")) {
+      current = {
+        testament,
+        name: node.textContent.replace("📘", "").trim(),
+        playlist: "",
+        chapters: []
+      };
+      books.push(current);
+      return;
+    }
+
+    if (!current) return;
+
+    if (node.matches("a.playlist")) {
+      current.playlist = node.href;
+    } else if (node.matches(".chapter a")) {
+      current.chapters.push({
+        name: node.textContent.trim(),
+        url: node.href
+      });
+    }
+  });
+
+  // Giao diện mới
+  const style = document.createElement("style");
+  style.textContent = `
+    body {
+      margin: 0 !important;
+      padding: 0 !important;
+      background: #10141c !important;
+      color: #f2f4f8 !important;
+      font-family: Arial, sans-serif !important;
+    }
+
+    body > *:not(#bibleApp):not(script):not(style) {
+      display: none !important;
+    }
+
+    #bibleApp {
+      max-width: 900px;
+      margin: auto;
+      padding: 22px 16px 50px;
+    }
+
+    #bibleApp header {
+      text-align: center;
+      padding: 20px 5px 28px;
+    }
+
+    #bibleApp h1 {
+      font-size: clamp(25px, 5vw, 36px);
+      margin: 0 0 10px;
+      color: #fff;
+    }
+
+    #bibleApp .subtitle {
+      color: #b8c5d6;
+      font-size: 17px;
+    }
+
+    #bibleApp .homeGrid,
+    #bibleApp .bookGrid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    #bibleApp button {
+      font: inherit;
+      cursor: pointer;
+      color: #fff;
+      border: 1px solid #39485d;
+      background: #202b3b;
+      border-radius: 12px;
+      padding: 16px 10px;
+      font-weight: bold;
+    }
+
+    #bibleApp button:active {
+      background: #31527b;
+    }
+
+    #bibleApp .testament {
+      min-height: 135px;
+      font-size: 23px;
+      background: #1d3553;
+    }
+
+    #bibleApp .testament small {
+      display: block;
+      margin-top: 12px;
+      font-size: 15px;
+      color: #cbd8e8;
+    }
+
+    #bibleApp .bookButton {
+      text-align: left;
+      font-size: 17px;
+      min-height: 65px;
+    }
+
+    #bibleApp .back {
+      display: block;
+      width: 100%;
+      margin-bottom: 18px;
+      background: #303c4d;
+      font-size: 17px;
+    }
+
+    #bibleApp .playlist {
+      display: block;
+      text-align: center;
+      background: #1769c2;
+      color: white;
+      padding: 17px 12px;
+      border-radius: 12px;
+      font-size: 19px;
+      font-weight: bold;
+      text-decoration: none;
+      margin: 20px 0;
+    }
+
+    #bibleApp .chapterGrid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 9px;
+    }
+
+    #bibleApp .chapterGrid a {
+      display: block;
+      text-align: center;
+      padding: 13px 5px;
+      border: 1px solid #3a4a60;
+      border-radius: 9px;
+      color: #9ed5ff;
+      background: #1c2736;
+      text-decoration: none;
+      font-size: 17px;
+    }
+
+    #bibleApp .sectionTitle {
+      font-size: 23px;
+      margin: 12px 0 20px;
+    }
+
+    @media (max-width: 480px) {
+      #bibleApp .chapterGrid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+      #bibleApp .testament {
+        font-size: 20px;
+      }
+    }
+  `;
+  document.head.appendChild(style);
+
+  const app = document.createElement("div");
+  app.id = "bibleApp";
+  document.body.appendChild(app);
+
+  const oldBooks = books.filter(b => b.testament === "OT");
+  const newBooks = books.filter(b => b.testament === "NT");
+
+  function button(label, className, action) {
+    const b = document.createElement("button");
+    b.textContent = label;
+    b.className = className || "";
+    b.addEventListener("click", action);
+    return b;
+  }
+
+  function header() {
+    const h = document.createElement("header");
+    h.innerHTML = `
+      <h1>KINH THÁNH</h1>
+      <div class="subtitle">Bản Truyền thống hiệu đính</div>
+    `;
+    return h;
+  }
+
+  function renderHome() {
+    app.innerHTML = "";
+    app.appendChild(header());
+
+    const grid = document.createElement("div");
+    grid.className = "homeGrid";
+
+    grid.appendChild(button(
+      "CỰU ƯỚC",
+      "testament",
+      () => renderBooks(oldBooks, "CỰU ƯỚC")
+    ));
+
+    grid.appendChild(button(
+      "TÂN ƯỚC",
+      "testament",
+      () => renderBooks(newBooks, "TÂN ƯỚC")
+    ));
+
+    const smalls = grid.querySelectorAll("button");
+    smalls[0].insertAdjacentHTML(
+      "beforeend", `<small>${oldBooks.length} sách</small>`
+    );
+    smalls[1].insertAdjacentHTML(
+      "beforeend", `<small>${newBooks.length} sách</small>`
+    );
+
+    app.appendChild(grid);
+  }
+
+  function renderBooks(list, title) {
+    app.innerHTML = "";
+    app.appendChild(header());
+
+    app.appendChild(button(
+      "← TRỞ VỀ TRANG CHÍNH",
+      "back",
+      renderHome
+    ));
+
+    const heading = document.createElement("div");
+    heading.className = "sectionTitle";
+    heading.textContent = title;
+    app.appendChild(heading);
+
+    const grid = document.createElement("div");
+    grid.className = "bookGrid";
+
+    list.forEach(book => {
+      grid.appendChild(button(
+        "📖 " + book.name,
+        "bookButton",
+        () => renderBook(book, list, title)
+      ));
+    });
+
+    app.appendChild(grid);
+  }
+
+  function renderBook(book, list, title) {
+    app.innerHTML = "";
+    app.appendChild(header());
+
+    app.appendChild(button(
+      "← TRỞ VỀ DANH SÁCH SÁCH",
+      "back",
+      () => renderBooks(list, title)
+    ));
+
+    const heading = document.createElement("div");
+    heading.className = "sectionTitle";
+    heading.textContent = "📖 " + book.name;
+    app.appendChild(heading);
+
+    if (book.playlist) {
+      const playlist = document.createElement("a");
+      playlist.className = "playlist";
+      playlist.href = book.playlist;
+      playlist.target = "_blank";
+      playlist.rel = "noopener";
+      playlist.textContent = "▶ MỞ TOÀN BỘ SÁCH";
+      app.appendChild(playlist);
+    }
+
+    const chapterTitle = document.createElement("div");
+    chapterTitle.className = "sectionTitle";
+    chapterTitle.textContent = "CÁC CHƯƠNG";
+    app.appendChild(chapterTitle);
+
+    const grid = document.createElement("div");
+    grid.className = "chapterGrid";
+
+    book.chapters.forEach(chapter => {
+      const a = document.createElement("a");
+      a.href = chapter.url;
+      a.target = "_blank";
+      a.rel = "noopener";
+      a.textContent = chapter.name;
+      grid.appendChild(a);
+    });
+
+    app.appendChild(grid);
+  }
+
+  renderHome();
+})();
+</script>
+
 
 
 
